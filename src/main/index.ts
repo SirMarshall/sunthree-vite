@@ -21,15 +21,62 @@ function startPython(): void {
     const scriptArgs = [path.join(pythonDir, 'server.py')];
     pythonProcess = spawn(pythonPath, scriptArgs, { cwd: pythonDir });
   } else {
-    // Production mode is unchanged
+    // Production mode with debugging
     const engineDirName = 'engine';
     const engineFilename = os.platform() === 'win32' ? 'engine.exe' : 'engine';
     pythonDir = path.join(process.resourcesPath, engineDirName);
-    pythonPath = path.join(pythonDir, engineFilename);
+    pythonPath = path.join(pythonDir, 'engine', engineFilename);
+    
+    // DEBUG: Log paths and check file system
+    console.log('🔍 DEBUG INFO:');
+    console.log('  process.resourcesPath:', process.resourcesPath);
+    console.log('  pythonDir:', pythonDir);
+    console.log('  pythonPath:', pythonPath);
+    console.log('  platform:', os.platform());
+    
+    // Check if directory exists
     try {
+      const fs = require('fs');
+      console.log('  pythonDir exists:', fs.existsSync(pythonDir));
+      console.log('  pythonPath exists:', fs.existsSync(pythonPath));
+      
+      if (fs.existsSync(pythonDir)) {
+        const dirContents = fs.readdirSync(pythonDir);
+        console.log('  pythonDir contents:', dirContents);
+      }
+      
+      if (fs.existsSync(pythonPath)) {
+        const stats = fs.statSync(pythonPath);
+        const permissions = (stats.mode & parseInt('777', 8)).toString(8);
+        console.log('  pythonPath permissions:', permissions);
+        console.log('  pythonPath is executable:', !!(stats.mode & fs.constants.S_IXUSR));
+        
+        // Try to access with different permission flags
+        try {
+          fs.accessSync(pythonPath, fs.constants.F_OK);
+          console.log('  ✅ File exists (F_OK)');
+        } catch (error: unknown) {
+          console.log('  ❌ File access failed (F_OK):', (error as Error).message);
+        }
+
+        try {
+          fs.accessSync(pythonPath, fs.constants.X_OK);
+          console.log('  ✅ File is executable (X_OK)');
+        } catch (error: unknown) {
+          console.log('  ❌ File is not executable (X_OK):', (error as Error).message);
+        }
+      }
+    } catch (debugError) {
+      console.error('  DEBUG ERROR:', debugError);
+    }
+    
+    try {
+      console.log('🚀 Attempting to spawn process...');
       pythonProcess = spawn(pythonPath, [], { cwd: pythonDir });
+      console.log('✅ spawn() succeeded, PID:', pythonProcess.pid);
     } catch (err: any) {
-      dialog.showErrorBox("Engine Launch Failed!", `Could not start the engine from its packaged location.\n\nPath: ${pythonPath}\n\nError: ${err}`);
+      console.error('❌ spawn() failed with error:', err);
+      dialog.showErrorBox("Engine Launch Failed!", `Could not start the engine from its packaged location.\n\nPath: ${pythonPath}\n\nError: ${err.message}\n\nCode: ${err.code}`);
       return;
     }
   }
@@ -47,14 +94,11 @@ function startPython(): void {
     console.log(`PYTHON (stdout): ${data.toString()}`);
   });
 
-  // --- THE FIX IS HERE ---
-  // The stderr handler now listens for the ready signal.
   pythonProcess.stderr?.on('data', (data: Buffer) => {
     const output = data.toString();
-    console.error(`PYTHON (stderr): ${output}`); // It's good practice to use console.error for stderr
+    console.error(`PYTHON (stderr): ${output}`);
 
     if (!isEngineReady) {
-      // We look for the exact string from your logs!
       if (output.includes('Running on http://127.0.0.1:5000')) {
         isEngineReady = true;
         console.log('✅ Python engine is ready (signal from stderr). Notifying renderer.');
@@ -65,7 +109,13 @@ function startPython(): void {
     }
   });
 
+  pythonProcess.on('error', (error) => {
+    console.error('❌ Python process error event:', error);
+    dialog.showErrorBox('Engine Process Error', `The Python engine failed to start:\n\n${error.message}`);
+  });
+
   pythonProcess.on('close', (code: number | null) => {
+    console.log(`🔄 Python process closed with code: ${code}`);
     if (code !== 0 && code !== null) {
       if (win) dialog.showErrorBox('Engine Failure', `The Python engine stopped with exit code: ${code}`);
     }
@@ -76,6 +126,14 @@ function startPython(): void {
 // =======================================================
 function setupIpcListeners() {
     ipcMain.on('engine-command', async (_event, { command, payload }) => {
+       if (command === 'download-video') {
+            // Check if the path is our placeholder for the downloads folder.
+            if (payload.path === 'downloads') {
+                console.log("Resolving 'downloads' placeholder to actual system path.");
+                // Replace the placeholder with the user's real Downloads folder path.
+                payload.path = app.getPath('downloads');
+            }
+        }
         const endpoint = command; // e.g., 'find-device' -> 'find-device'
         const postData = JSON.stringify(payload);
 
