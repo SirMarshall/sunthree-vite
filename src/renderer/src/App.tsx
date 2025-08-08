@@ -73,35 +73,31 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Boris's Glorious Downloader</h1>
-      <p><b>Status:</b> {message}</p>
-      <hr/>
-      <input
-        type="text"
-        value={url}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
-        placeholder="Enter YouTube URL here, Comrade"
-        style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
-      />
-      
-      {/* --- UPDATE THE BUTTON'S DISABLED LOGIC --- */}
-      {/* The button should be disabled if downloading OR if the engine isn't ready. */}
-      <button
-        onClick={handleDownload}
-        disabled={isDownloading || !isEngineReady}
-        style={{
-          width: '100%',
-          padding: '12px',
-          background: (isDownloading || !isEngineReady) ? 'gray' : 'red',
-          color: 'white',
-          border: 'none',
-          fontSize: '16px',
-          cursor: (isDownloading || !isEngineReady) ? 'not-allowed' : 'pointer',
-        }}
+    <div className="flex items-center justify-center min-h-screen">
+      <div
+        className="w-full max-w-md p-8 space-y-6 bg-black bg-opacity-50 rounded-2xl shadow-lg backdrop-blur-lg border border-red-500/20"
       >
-        {isDownloading ? 'WORKING...' : (isEngineReady ? 'DOWNLOAD FOR THE PEOPLE' : 'ENGINE STARTING...')}
-      </button>
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-red-500 tracking-wider">SUUNTHREE</h1>
+          <p className="text-red-400/70 mt-2"><b>Status:</b> {message}</p>
+        </div>
+
+        <input
+          className="w-full px-4 py-3 bg-red-900/20 border border-red-500/30 rounded-lg text-white placeholder-red-400/50 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          type="text"
+          value={url}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+          placeholder="Enter YouTube URL here"
+        />
+
+        <button
+          onClick={handleDownload}
+          disabled={isDownloading || !isEngineReady}
+          className="w-full py-3 text-lg font-semibold text-white bg-red-600/80 rounded-lg hover:bg-red-700/90 disabled:bg-gray-600/50 disabled:cursor-not-allowed transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-red-500/50"
+        >
+          {isDownloading ? 'WORKING...' : (isEngineReady ? 'DOWNLOAD' : 'ENGINE STARTING...')}
+        </button>
+      </div>
     </div>
   );
 }
