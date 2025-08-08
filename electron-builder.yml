@@ -1,0 +1,10 @@
+# electron-builder.yml (CLEAN AND FOCUSED)
+appId: com.electron.app
+productName: sunthree-vite
+directories:
+  output: dist
+extraResources:
+  - from: build/engine
+    to: engine
+linux:
+  target: AppImage
