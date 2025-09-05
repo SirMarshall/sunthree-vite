@@ -17,9 +17,6 @@ jobs:
         with:
           node-version: 20 # Using Node.js 20, adjust if your project requires a different LTS
 
-      - name: Install dependencies
-        run: npm install # This will also trigger your 'postinstall' script (electron-builder install-app-deps)
-
       - name: Run prebuild script (build-engine.sh)
         # Note: On Windows, Git Bash or similar might be needed for .sh scripts.
         # GitHub Actions' Windows runners usually have Git Bash pre-installed,
