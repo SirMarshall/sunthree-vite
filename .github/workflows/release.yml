@@ -3,7 +3,7 @@ name: Build & Release Sunthree Vite
 on:
   push:
     tags:
-      - 'v*.*.*' # Trigger on tags like v1.0.0, v1.2.3, etc.
+      - 'v*.*.*'
 
 jobs:
   build-windows:
@@ -15,35 +15,35 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Specify your Node.js version
+          node-version: 20
 
-      # --- NEW STEP: Run setup.sh to prepare both Node.js and Python environments ---
-      # On Windows, GitHub Actions uses a bash-like shell by default, so 'sh' should work.
-      # The script handles 'npm install' and 'python -m venv' and 'pip install'
       - name: Run setup script (setup.sh)
         run: sh ./setup.sh
-      # --- END NEW STEP ---
-
-      # Note: The 'postinstall' script from package.json (electron-builder install-app-deps)
-      # will be run by the 'npm install' command within setup.sh.
 
       - name: Run prebuild script (build-engine.sh)
-        # This will now find ./backend/venv/bin/pyinstaller because setup.sh ran previously.
         run: sh ./scripts/build-engine.sh
 
-      - name: Build Electron app for Windows
+      - name: Build Electron app for Windows (No Publish)
+        # Use a specific npm script that builds but does not publish.
+        # If 'npm run build:win' already has 'publish: never' in config, this is fine.
+        # Otherwise, you might need a new script, e.g., "build:win-local": "npm run build && electron-builder --win --publish never"
+        # For now, let's assume your existing 'build:win' is okay if we configure package.json.
         run: npm run build:win
 
       - name: Create GitHub Release for Windows
         uses: softprops/action-gh-release@v1
         with:
-          files: release/*.exe
+          # --- IMPORTANT: Update the 'files' to include electron-builder's output as well ---
+          files: |
+            release/*.exe             # Your PyInstaller engine executable
+            dist/*.exe                # The main Windows installer (e.g., Sunthree Vite Setup 1.0.0.exe)
+            dist/win-unpacked/**/*    # If you also want to attach the unpacked version
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
-        env: # <--- ADD THIS BLOCK
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # <--- THIS IS THE FIX
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-linux:
     runs-on: ubuntu-latest
@@ -56,31 +56,35 @@ jobs:
         with:
           node-version: 20
 
-      # --- NEW STEP: Run setup.sh ---
       - name: Run setup script (setup.sh)
         run: sh ./setup.sh
-      # --- END NEW STEP ---
 
-      - name: Install Linux build dependencies (e.g., libfuse2 for AppImage)
-        # Keep this, as setup.sh won't install system-level packages
+      - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libfuse2 # Or any other system deps for PyInstaller/AppImage
+          sudo apt-get install --no-install-recommends -y libfuse2
 
       - name: Run prebuild script (build-engine.sh)
         run: sh ./scripts/build-engine.sh
 
-      - name: Build Electron app for Linux
+      - name: Build Electron app for Linux (No Publish)
         run: npm run build:linux
 
       - name: Create GitHub Release for Linux
         uses: softprops/action-gh-release@v1
         with:
-          files: release/*.AppImage
+          # --- IMPORTANT: Update the 'files' ---
+          files: |
+            release/*.AppImage        # Your PyInstaller engine executable
+            dist/*.AppImage           # The main Linux AppImage
+            dist/*.deb                # If you also build .deb
+            dist/*.rpm                # If you also build .rpm
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-mac:
     runs-on: macos-latest
@@ -93,24 +97,26 @@ jobs:
         with:
           node-version: 20
 
-      # --- NEW STEP: Run setup.sh ---
       - name: Run setup script (setup.sh)
         run: sh ./setup.sh
-      # --- END NEW STEP ---
 
       - name: Run prebuild script (build-engine.sh)
         run: sh ./scripts/build-engine.sh
 
-      - name: Build Electron app for macOS
+      - name: Build Electron app for macOS (No Publish)
         run: npm run build:mac
 
       - name: Create GitHub Release for macOS
         uses: softprops/action-gh-release@v1
         with:
+          # --- IMPORTANT: Update the 'files' ---
           files: |
-            release/*.dmg
-            release/*.zip
+            release/*                 # Your PyInstaller engine executable (no extension on macOS)
+            dist/*.dmg                # The macOS DMG installer
+            dist/*.zip                # The macOS zip archive
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
