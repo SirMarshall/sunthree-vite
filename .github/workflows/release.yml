@@ -1,0 +1,105 @@
+name: Build & Release Sunthree Vite
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Trigger on tags like v1.0.0, v1.2.3, etc.
+
+jobs:
+  build-windows:
+    runs-on: windows-latest # Use a Windows runner for Windows build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Using Node.js 20, adjust if your project requires a different LTS
+
+      - name: Install dependencies
+        run: npm install # This will also trigger your 'postinstall' script (electron-builder install-app-deps)
+
+      - name: Run prebuild script (build-engine.sh)
+        # Note: On Windows, Git Bash or similar might be needed for .sh scripts.
+        # GitHub Actions' Windows runners usually have Git Bash pre-installed,
+        # so `sh` command should work.
+        run: sh ./scripts/build-engine.sh
+
+      - name: Build Electron app for Windows
+        # Uses your `build:win` script directly, which includes `npm run build`
+        # and then `electron-builder --win`.
+        run: npm run build:win
+
+      - name: Create GitHub Release for Windows
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*.exe # Attach all .exe files from the 'release' directory
+          name: Release ${{ github.ref_name }} # Release name (e.g., Release v1.0.0)
+          tag_name: ${{ github.ref_name }} # Tag name (e.g., v1.0.0)
+          draft: false
+          prerelease: false
+
+  build-linux:
+    runs-on: ubuntu-latest # Use an Ubuntu (Linux) runner for Linux build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Using Node.js 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run prebuild script (build-engine.sh)
+        run: sh ./scripts/build-engine.sh
+
+      - name: Build Electron app for Linux
+        # Uses your `build:linux` script directly.
+        run: npm run build:linux
+
+      - name: Create GitHub Release for Linux
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*.AppImage # Attach all .AppImage files
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+  build-mac:
+    runs-on: macos-latest # Use a macOS runner for macOS build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Using Node.js 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run prebuild script (build-engine.sh)
+        run: sh ./scripts/build-engine.sh
+
+      - name: Build Electron app for macOS
+        # Uses your `build:mac` script directly.
+        run: npm run build:mac
+
+      - name: Create GitHub Release for macOS
+        uses: softprops/action-gh-release@v1
+        with:
+          # electron-builder by default creates .dmg and .zip for macOS.
+          # We'll attach both, or you can pick one.
+          files: |
+            release/*.dmg
+            release/*.zip
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
