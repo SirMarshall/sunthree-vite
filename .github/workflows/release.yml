@@ -23,27 +23,25 @@ jobs:
       - name: Run prebuild script (build-engine.sh)
         run: sh ./scripts/build-engine.sh
 
-      - name: Build Electron app for Windows (No Publish)
-        # Use a specific npm script that builds but does not publish.
-        # If 'npm run build:win' already has 'publish: never' in config, this is fine.
-        # Otherwise, you might need a new script, e.g., "build:win-local": "npm run build && electron-builder --win --publish never"
-        # For now, let's assume your existing 'build:win' is okay if we configure package.json.
+      # --- BORIS FIX IS HERE! ---
+      - name: Build Electron app for Windows
         run: npm run build:win
+        env: # <--- THIS IS FOR IVAN, THE BUILD FOREMAN!
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release for Windows
         uses: softprops/action-gh-release@v1
         with:
-          # --- IMPORTANT: Update the 'files' to include electron-builder's output as well ---
+          # This step no longer needs the token, but it does no harm to leave it.
+          # The important thing is that the step above has it!
           files: |
-            release/*.exe             # Your PyInstaller engine executable
-            dist/*.exe                # The main Windows installer (e.g., Sunthree Vite Setup 1.0.0.exe)
-            dist/win-unpacked/**/*    # If you also want to attach the unpacked version
+            dist/*.exe
+            dist/*.blockmap
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # <--- THIS IS FOR DMITRI, THE DELIVERY DRIVER! (Can remove, is fine)
 
   build-linux:
     runs-on: ubuntu-latest
