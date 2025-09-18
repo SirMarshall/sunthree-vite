@@ -8,6 +8,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:      # <--- BORIS FINAL FIX!
+      contents: write   # <--- THIS IS KEY TO VODKA CABINET!
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
