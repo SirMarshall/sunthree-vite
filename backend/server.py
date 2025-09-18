@@ -1,5 +1,5 @@
 # =================================================================
-# backend/server.py -- THE FINAL, ENLIGHTENED SOLDIER --
+# backend/server.py
 # =================================================================
 import sys
 import json
@@ -11,10 +11,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Allow Electron renderer to make requests
+CORS(app)
 
 def get_config():
-    # The path to the config is now relative to this script.
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
@@ -25,7 +24,7 @@ def find_mp3_player(target_name):
     """
     Find a USB drive by its volume label or mount point name.
     target_name can be either:
-    - A volume label like "7CB2-67CD" 
+    - A volume label like "7CB2-67CD"
     - A folder name that should exist inside the drive
     """
     if platform.system() == "Windows":
@@ -37,7 +36,7 @@ def find_mp3_player(target_name):
                     drive_label = os.path.basename(p.mountpoint.rstrip('\\'))
                     if drive_label == target_name:
                         return p.mountpoint
-                    
+
                     # Method 2: Check if target_name is a folder inside the drive (backward compatibility)
                     if target_name in os.listdir(p.mountpoint):
                         return p.mountpoint
@@ -47,7 +46,7 @@ def find_mp3_player(target_name):
     else: # macOS / Linux
         # Method 1: Look for drive mounted with the target name as volume label
         possible_media_paths = [f"/media/{os.getlogin()}", f"/run/media/{os.getlogin()}", "/media", "/mnt"]
-        
+
         for base_path in possible_media_paths:
             if os.path.exists(base_path):
                 try:
@@ -61,7 +60,7 @@ def find_mp3_player(target_name):
                 except Exception as e:
                     print(f"Error checking {base_path}: {e}")
                     continue
-        
+
         # Method 2: Use psutil to find all mounted drives and check labels
         try:
             partitions = psutil.disk_partitions()
@@ -77,7 +76,7 @@ def find_mp3_player(target_name):
                     continue
         except Exception as e:
             print(f"Error using psutil: {e}")
-        
+
         # Method 3: Fallback - check if target_name is a folder inside any USB drive
         for base_path in possible_media_paths:
             if os.path.exists(base_path):
@@ -93,7 +92,7 @@ def find_mp3_player(target_name):
                                 continue
                 except Exception:
                     continue
-        
+
         return None
 
 def download_youtube_audio(url, output_path):
@@ -118,7 +117,7 @@ def find_device_endpoint():
         config = get_config()
         target_name = config.get("deviceName", "SUUNTO")
         print(f"Looking for device: '{target_name}'")
-        
+
         # Debug: List all current mount points
         print("Current mount points:")
         try:
@@ -126,9 +125,9 @@ def find_device_endpoint():
                 print(f"  {partition.mountpoint} ({partition.fstype})")
         except Exception as e:
             print(f"Error listing partitions: {e}")
-        
+
         device_path = find_mp3_player(target_name)
-        
+
         if device_path:
             print(f"Device found at: {device_path}")
             return jsonify({"success": True, "type": "device-found", "path": device_path})

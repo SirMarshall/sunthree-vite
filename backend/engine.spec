@@ -1,8 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-# This .spec file is the single source of truth for building the Python engine.
-# It is more robust than command-line arguments.
-
 a = Analysis(
     ['server.py'],
     pathex=[],
