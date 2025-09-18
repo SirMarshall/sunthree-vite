@@ -6,85 +6,110 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Run setup script (setup.sh)
-        run: sh ./setup.sh
-
-      - name: Build and Publish Electron app for Windows
-        run: npm run build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # --- NOTICE, CARTER! THE 'softprops' STEP IS GONE! ---
-      # electron-builder now handles the release and upload. Is better.
-
+  # --- THE LINUX SOLDIER ---
   build-linux:
     runs-on: ubuntu-latest
-    # --- BORIS FIX #1: Give Linux job the vodka cabinet key! ---
-    permissions:
-      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8 # Or whatever version you prefer
-
-
+          version: 8
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Run setup script (setup.sh)
-        run: bash ./setup.sh  # <--- WE SUMMON THE POET, NOT THE FARMHAND!
-
+        run: bash ./setup.sh
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libfuse2
+      # Build, but DO NOT publish
+      - name: Build Electron app for Linux
+        run: npm run build:linux -- --publish never
+      # Put the finished product in the holding area
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/*.AppImage
 
-      # --- BORIS FIX #2: Give the build foreman his papers! ---
-      - name: Build and Publish Electron app for Linux
-        run: npm run build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # --- BORIS FIX #3: Fire the redundant delivery driver! ---
-      # Nyet, we do not need this extra step. The build command does it all.
-
+  # --- THE MAC SOLDIER ---
   build-mac:
     runs-on: macos-latest
-    # --- BORIS FIX #1: Mac job also gets key! ---
-    permissions:
-      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Run setup script (setup.sh)
-        run: bash ./setup.sh  # <--- WE SUMMON THE POET, NOT THE FARMHAND!
+        run: bash ./setup.sh
+      # Build, but DO NOT publish
+      - name: Build Electron app for macOS
+        run: npm run build:mac -- --publish never
+      # Put the finished product in the holding area
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-build
+          path: |
+            dist/*.dmg
+            dist/*.zip
 
-      # --- BORIS FIX #2: Give the Mac foreman his papers too! ---
-      - name: Build and Publish Electron app for macOS
-        run: npm run build:mac
+  # --- THE GENERAL! ---
+  build-and-release-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    # The General waits for the soldiers to finish!
+    needs: [build-linux, build-mac]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run setup script (setup.sh)
+        run: sh ./setup.sh
+      # The General also builds but does not publish himself
+      - name: Build Electron app for Windows
+        run: npm run build:win -- --publish never
+
+      # The General collects all the reports!
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: dist
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-build
+          path: dist
+
+      # The General makes ONE glorious release with ALL the files!
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.dmg
+            dist/*.zip
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # --- BORIS FIX #3: This driver is fired also. We are lean, mean, building machine! ---
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
