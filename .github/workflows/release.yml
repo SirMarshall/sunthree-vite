@@ -50,7 +50,7 @@ jobs:
           node-version: 20
 
       - name: Run setup script (setup.sh)
-        run: sh ./setup.sh
+        run: bash ./setup.sh  # <--- WE SUMMON THE POET, NOT THE FARMHAND!
 
       - name: Install Linux build dependencies
         run: |
@@ -80,7 +80,7 @@ jobs:
           node-version: 20
 
       - name: Run setup script (setup.sh)
-        run: sh ./setup.sh
+        run: bash ./setup.sh  # <--- WE SUMMON THE POET, NOT THE FARMHAND!
 
       # --- BORIS FIX #2: Give the Mac foreman his papers too! ---
       - name: Build and Publish Electron app for macOS
