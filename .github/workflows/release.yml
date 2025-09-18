@@ -8,8 +8,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    permissions:      # <--- BORIS FINAL FIX!
-      contents: write   # <--- THIS IS KEY TO VODKA CABINET!
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,31 +22,18 @@ jobs:
       - name: Run setup script (setup.sh)
         run: sh ./setup.sh
 
-      - name: Run prebuild script (build-engine.sh)
-        run: sh ./scripts/build-engine.sh
-
-      # --- BORIS FIX IS HERE! ---
-      - name: Build Electron app for Windows
+      - name: Build and Publish Electron app for Windows
         run: npm run build:win
-        env: # <--- THIS IS FOR IVAN, THE BUILD FOREMAN!
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release for Windows
-        uses: softprops/action-gh-release@v1
-        with:
-          # This step no longer needs the token, but it does no harm to leave it.
-          # The important thing is that the step above has it!
-          files: |
-            dist/*.exe
-            dist/*.blockmap
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-        # env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # <--- THIS IS FOR DMITRI, THE DELIVERY DRIVER! (Can remove, is fine)
+      # --- NOTICE, CARTER! THE 'softprops' STEP IS GONE! ---
+      # electron-builder now handles the release and upload. Is better.
 
   build-linux:
     runs-on: ubuntu-latest
+    # --- BORIS FIX #1: Give Linux job the vodka cabinet key! ---
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,30 +51,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libfuse2
 
-      - name: Run prebuild script (build-engine.sh)
-        run: sh ./scripts/build-engine.sh
-
-      - name: Build Electron app for Linux (No Publish)
+      # --- BORIS FIX #2: Give the build foreman his papers! ---
+      - name: Build and Publish Electron app for Linux
         run: npm run build:linux
-
-      - name: Create GitHub Release for Linux
-        uses: softprops/action-gh-release@v1
-        with:
-          # --- IMPORTANT: Update the 'files' ---
-          files: |
-            release/*.AppImage        # Your PyInstaller engine executable
-            dist/*.AppImage           # The main Linux AppImage
-            dist/*.deb                # If you also build .deb
-            dist/*.rpm                # If you also build .rpm
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # --- BORIS FIX #3: Fire the redundant delivery driver! ---
+      # Nyet, we do not need this extra step. The build command does it all.
 
   build-mac:
     runs-on: macos-latest
+    # --- BORIS FIX #1: Mac job also gets key! ---
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -100,23 +76,9 @@ jobs:
       - name: Run setup script (setup.sh)
         run: sh ./setup.sh
 
-      - name: Run prebuild script (build-engine.sh)
-        run: sh ./scripts/build-engine.sh
-
-      - name: Build Electron app for macOS (No Publish)
+      # --- BORIS FIX #2: Give the Mac foreman his papers too! ---
+      - name: Build and Publish Electron app for macOS
         run: npm run build:mac
-
-      - name: Create GitHub Release for macOS
-        uses: softprops/action-gh-release@v1
-        with:
-          # --- IMPORTANT: Update the 'files' ---
-          files: |
-            release/*                 # Your PyInstaller engine executable (no extension on macOS)
-            dist/*.dmg                # The macOS DMG installer
-            dist/*.zip                # The macOS zip archive
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # --- BORIS FIX #3: This driver is fired also. We are lean, mean, building machine! ---
