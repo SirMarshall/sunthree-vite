@@ -12,24 +12,27 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run setup script (setup.sh)
-        run: bash ./setup.sh
+          cache: 'pnpm'
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libfuse2
-      # Build, but DO NOT publish
+      - name: Run setup script
+        run: bash ./setup.sh
       - name: Build Electron app for Linux
-        run: npm run build:linux -- --publish never
-      # Put the finished product in the holding area
+        run: pnpm run build:linux -- --publish never
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -42,20 +45,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run setup script (setup.sh)
+          cache: 'pnpm'
+      - name: Run setup script
         run: bash ./setup.sh
-      # Build, but DO NOT publish
       - name: Build Electron app for macOS
-        run: npm run build:mac -- --publish never
-      # Put the finished product in the holding area
+        run: pnpm run build:mac -- --publish never
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -69,26 +75,28 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-    # The General waits for the soldiers to finish!
     needs: [build-linux, build-mac]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run setup script (setup.sh)
-        run: sh ./setup.sh
-      # The General also builds but does not publish himself
+          cache: 'pnpm'
+      - name: Run setup script
+        run: bash ./setup.sh
       - name: Build Electron app for Windows
-        run: npm run build:win -- --publish never
+        run: pnpm run build:win -- --publish never
 
-      # The General collects all the reports!
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
@@ -100,9 +108,8 @@ jobs:
           name: mac-build
           path: dist
 
-      # The General makes ONE glorious release with ALL the files!
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.exe
