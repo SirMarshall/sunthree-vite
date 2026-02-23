@@ -10,6 +10,10 @@ import psutil
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+DRIVE_NICKNAMES = {
+    "4CFC-8D04": "Wayne's Headphones"
+}
+
 app = Flask(__name__)
 CORS(app)
 
@@ -110,6 +114,96 @@ def download_youtube_audio(url, output_path):
         filename = ydl.prepare_filename(info_dict)
         base, _ = os.path.splitext(filename)
         return base + '.mp3'
+
+def list_available_drives():
+    drives = []
+    print("DEBUG: Starting drive discovery...", flush=True)
+    
+    if platform.system() == "Windows":
+        partitions = psutil.disk_partitions()
+        for p in partitions:
+            try:
+                if 'removable' in p.opts and os.path.isdir(p.mountpoint):
+                    drive_label = os.path.basename(p.mountpoint.rstrip('\\'))
+                    if not drive_label:
+                        drive_label = p.device
+                    drives.append({"name": f"USB Drive ({drive_label})", "path": p.mountpoint})
+                    print(f"DEBUG: Found Windows drive: {drive_label} at {p.mountpoint}")
+            except Exception:
+                continue
+    else: # macOS / Linux
+        # Strategy 1: Check known mount root directories
+        search_roots = ["/media", "/run/media", "/mnt", "/Volumes"]
+        for root in search_roots:
+            if not os.path.exists(root):
+                print(f"DEBUG: Root {root} does not exist.", flush=True)
+                continue
+            
+            print(f"DEBUG: Scanning root {root}", flush=True)
+            
+            # For /media and /run/media, we might have subdirectories for users
+            try:
+                # First check the root itself (like /Volumes on Mac)
+                for item in os.listdir(root):
+                    item_path = os.path.join(root, item)
+                    is_mount = os.path.ismount(item_path)
+                    if is_mount:
+                        if not any(d['path'] == item_path for d in drives):
+                            display_name = DRIVE_NICKNAMES.get(item, item)
+                            drives.append({"name": display_name, "path": item_path})
+                            print(f"DEBUG: Found mount via root walk: {display_name} ({item}) at {item_path}", flush=True)
+                    
+                    # Also check one level deeper for /media/username/LABEL style
+                    if os.path.isdir(item_path) and root in ["/media", "/run/media"]:
+                        print(f"DEBUG: Deep scanning {item_path}", flush=True)
+                        try:
+                            for subitem in os.listdir(item_path):
+                                subitem_path = os.path.join(item_path, subitem)
+                                is_sub_mount = os.path.ismount(subitem_path)
+                                print(f"DEBUG: Checking subitem {subitem_path} (is_mount: {is_sub_mount})", flush=True)
+                                if is_sub_mount:
+                                    if not any(d['path'] == subitem_path for d in drives):
+                                        display_name = DRIVE_NICKNAMES.get(subitem, subitem)
+                                        drives.append({"name": display_name, "path": subitem_path})
+                                        print(f"DEBUG: Found mount via user walk: {display_name} ({subitem}) at {subitem_path}", flush=True)
+                        except Exception as e:
+                            print(f"DEBUG: Error scanning subfolder {item_path}: {e}", flush=True)
+                            continue
+            except Exception as e:
+                print(f"DEBUG: Error scanning {root}: {e}")
+        
+        # Strategy 2: Use psutil for everything else (fallback/verification)
+        try:
+            partitions = psutil.disk_partitions(all=True)
+            for p in partitions:
+                try:
+                    # Filter for likely removable/user-mounted filesystems
+                    if p.fstype in ['vfat', 'exfat', 'ntfs', 'msdos'] or p.mountpoint.startswith(('/media', '/run/media', '/Volumes')):
+                        if not any(d['path'] == p.mountpoint for d in drives):
+                            # Final sanity check: exclude system paths
+                            if p.mountpoint not in ['/', '/boot', '/home', '/boot/efi', '/tmp', '/var'] and not p.mountpoint.startswith('/snap'):
+                                if os.path.exists(p.mountpoint):
+                                    mount_name = os.path.basename(p.mountpoint.rstrip('/'))
+                                    raw_name = mount_name if mount_name else p.device
+                                    display_name = DRIVE_NICKNAMES.get(raw_name, raw_name)
+                                    drives.append({"name": display_name, "path": p.mountpoint})
+                                    print(f"DEBUG: Found mount via psutil: {display_name} ({raw_name}) at {p.mountpoint}", flush=True)
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"DEBUG: Error using psutil: {e}")
+
+    print(f"DEBUG: Discovery finished. Found {len(drives)} drives.", flush=True)
+    return drives
+
+@app.route('/list-drives', methods=['POST'])
+def list_drives_endpoint():
+    try:
+        drives = list_available_drives()
+        return jsonify({"success": True, "type": "drives-list", "drives": drives})
+    except Exception as e:
+        print(f"Error in list_drives_endpoint: {e}")
+        return jsonify({"success": False, "type": "error", "message": str(e)})
 
 @app.route('/find-device', methods=['POST'])
 def find_device_endpoint():

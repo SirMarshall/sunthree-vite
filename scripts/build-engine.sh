@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -14,10 +14,10 @@ echo "SUCCESS: Directories cleaned."
 # Determine the PyInstaller executable path based on OS
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
   # Windows (Git Bash/MSYS2/Cygwin environments)
-  PYINSTALLER_EXEC="./backend/venv/Scripts/pyinstaller.exe"
+  PYINSTALLER_EXEC="./backend/.venv/Scripts/pyinstaller.exe"
 else
   # Linux / macOS
-  PYINSTALLER_EXEC="./backend/venv/bin/pyinstaller"
+  PYINSTALLER_EXEC="./backend/.venv/bin/pyinstaller"
 fi
 
 # Ensure the executable exists before trying to run it

@@ -15,9 +15,24 @@ function startPython(): void {
   let pythonDir: string;
 
   if (isDev) {
-    // Dev mode is unchanged
-    pythonPath = 'python';
+    // Determine the Python path for development
     pythonDir = path.join(__dirname, '..', '..', 'backend');
+    
+    // Check for .venv interpreter first
+    const venvPath = os.platform() === 'win32' 
+      ? path.join(pythonDir, '.venv', 'Scripts', 'python.exe')
+      : path.join(pythonDir, '.venv', 'bin', 'python');
+      
+    const fs = require('fs');
+    if (fs.existsSync(venvPath)) {
+      pythonPath = venvPath;
+      console.log('✅ Using Python from .venv:', pythonPath);
+    } else {
+      // Fallback to system python3 on Unix, python on Windows
+      pythonPath = os.platform() === 'win32' ? 'python' : 'python3';
+      console.log('⚠️  .venv not found, using system Python:', pythonPath);
+    }
+    
     const scriptArgs = [path.join(pythonDir, 'server.py')];
     pythonProcess = spawn(pythonPath, scriptArgs, { cwd: pythonDir });
   } else {
@@ -126,6 +141,7 @@ function startPython(): void {
 // =======================================================
 function setupIpcListeners() {
     ipcMain.on('engine-command', async (_event, { command, payload }) => {
+        console.log(`ELECTRON: Received command '${command}' with payload:`, payload);
        if (command === 'download-video') {
             // Check if the path is our placeholder for the downloads folder.
             if (payload.path === 'downloads') {
@@ -135,7 +151,7 @@ function setupIpcListeners() {
             }
         }
         const endpoint = command; // e.g., 'find-device' -> 'find-device'
-        const postData = JSON.stringify(payload);
+        const postData = JSON.stringify(payload || {});
 
         const options = {
             hostname: '127.0.0.1',

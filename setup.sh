@@ -22,16 +22,16 @@ fi
 echo "🐍 Setting up Python virtual environment..."
 cd backend
 
-if [ ! -d "venv" ]; then
-    python -m venv venv
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
     echo "✅ Created Python virtual environment"
 fi
 
 # Activate virtual environment
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    source venv/Scripts/activate
+    source .venv/Scripts/activate
 else
-    source venv/bin/activate
+    source .venv/bin/activate
 fi
 
 # Install Python dependencies

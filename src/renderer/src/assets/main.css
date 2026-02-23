@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 body {
-  background-color: #000;
+  background-color: #f8fafc;
   background-image: url('./wavy-lines.svg');
   background-repeat: no-repeat;
   background-size: cover;
+  transition: background-color 0.3s ease;
+}
+
+html.dark body {
+  background-color: #000;
 }
