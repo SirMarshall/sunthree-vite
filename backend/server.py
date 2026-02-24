@@ -100,9 +100,11 @@ def find_mp3_player(target_name):
         return None
 
 def download_youtube_audio(url, output_path):
+    ffmpeg_dir = os.path.join(sys._MEIPASS, 'ffmpeg_binaries') if hasattr(sys, '_MEIPASS') else 'ffmpeg_binaries'
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
+        'ffmpeg_location': ffmpeg_dir,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',

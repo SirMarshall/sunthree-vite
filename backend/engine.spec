@@ -1,13 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+
+is_win = sys.platform.startswith('win')
+ffmpeg_binary = 'ffmpeg_binaries/ffmpeg.exe' if is_win else 'ffmpeg_binaries/ffmpeg'
+ffprobe_binary = 'ffmpeg_binaries/ffprobe.exe' if is_win else 'ffmpeg_binaries/ffprobe'
+
 a = Analysis(
     ['server.py'],
     pathex=[],
     # We list all binaries and data files here.
     # The format is ('source_path', 'destination_folder_in_bundle')
     binaries=[
-        ('ffmpeg_binaries/ffmpeg', 'ffmpeg_binaries'),
-        ('ffmpeg_binaries/ffprobe', 'ffmpeg_binaries')
+        (ffmpeg_binary, 'ffmpeg_binaries'),
+        (ffprobe_binary, 'ffmpeg_binaries')
     ],
     datas=[
         ('config.json', '.') # Puts config.json in the root of the bundle
