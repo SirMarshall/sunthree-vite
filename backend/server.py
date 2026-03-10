@@ -9,6 +9,9 @@ import yt_dlp
 import psutil
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import re
+
+global_progress = {"status": "idle", "percent": 0, "speed": "", "eta": ""}
 
 DRIVE_NICKNAMES = {
     "4CFC-8D04": "Wayne's Headphones"
@@ -99,7 +102,42 @@ def find_mp3_player(target_name):
 
         return None
 
+def yt_dlp_hook(d):
+    global global_progress
+    if d['status'] == 'downloading':
+        percent_str = d.get('_percent_str', '').strip()
+        speed_str = d.get('_speed_str', '').strip()
+        eta_str = d.get('_eta_str', '').strip()
+
+        # Clean ANSI escape sequences
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        percent_str = ansi_escape.sub('', percent_str)
+        
+        percent = 0
+        if '%' in percent_str:
+            try:
+                percent = float(percent_str.replace('%', ''))
+            except:
+                pass
+        
+        global_progress = {
+            "status": "downloading",
+            "percent": percent,
+            "speed": ansi_escape.sub('', speed_str),
+            "eta": ansi_escape.sub('', eta_str)
+        }
+    elif d['status'] == 'finished':
+        global_progress = {
+            "status": "processing",
+            "percent": 100,
+            "speed": "",
+            "eta": ""
+        }
+
 def download_youtube_audio(url, output_path):
+    global global_progress
+    global_progress = {"status": "starting", "percent": 0, "speed": "", "eta": ""}
+    
     ffmpeg_dir = os.path.join(sys._MEIPASS, 'ffmpeg_binaries') if hasattr(sys, '_MEIPASS') else 'ffmpeg_binaries'
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -110,11 +148,13 @@ def download_youtube_audio(url, output_path):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
+        'progress_hooks': [yt_dlp_hook],
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info_dict)
         base, _ = os.path.splitext(filename)
+        global_progress = {"status": "idle", "percent": 0, "speed": "", "eta": ""}
         return base + '.mp3'
 
 def list_available_drives():
@@ -245,7 +285,13 @@ def download_video_endpoint():
         return jsonify({"success": True, "type": "download-complete", "file": downloaded_file})
     except Exception as e:
         print(f"Error in download_video_endpoint: {e}")
+        global global_progress
+        global_progress = {"status": "idle", "percent": 0, "speed": "", "eta": ""}
         return jsonify({"success": False, "type": "error", "message": str(e)})
+
+@app.route('/download-progress', methods=['POST'])
+def download_progress_endpoint():
+    return jsonify({"success": True, "type": "download-progress", "progress": global_progress})
 
 if __name__ == '__main__':
     print("Starting server...")

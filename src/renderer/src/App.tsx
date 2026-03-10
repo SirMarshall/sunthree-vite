@@ -17,6 +17,7 @@ type EngineResponse =
   | { type: 'device-not-found' }
   | { type: 'drives-list'; drives: { name: string; path: string }[] }
   | { type: 'download-complete'; file: string }
+  | { type: 'download-progress'; progress: { status: string; percent: number; speed: string; eta: string } }
   | { type: 'error'; message: string };
 
 function App() {
@@ -25,7 +26,21 @@ function App() {
   const [drives, setDrives] = useState<{name: string, path: string}[]>([]);
   const [message, setMessage] = useState('Initializing engine...');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [progress, setProgress] = useState<{status: string, percent: number, speed: string, eta: string} | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Poll progress when downloading
+  useEffect(() => {
+    let interval: any;
+    if (isDownloading) {
+      interval = setInterval(() => {
+        window.electronAPI.sendCommand('download-progress');
+      }, 500);
+    } else {
+      setProgress(null);
+    }
+    return () => clearInterval(interval);
+  }, [isDownloading]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -65,6 +80,9 @@ function App() {
         case 'download-complete':
           setIsDownloading(false);
           setMessage(`SUCCESS! File saved to: ${response.file}`);
+          break;
+        case 'download-progress':
+          setProgress(response.progress);
           break;
         case 'error':
           setIsDownloading(false);
@@ -169,6 +187,32 @@ function App() {
             </button>
           </div>
         </div>
+
+        {isDownloading && progress && progress.status !== 'idle' && (
+          <div className="w-full mt-4 space-y-2">
+            <div className="flex justify-between text-sm font-bold text-red-900 dark:text-red-200">
+              <span>{progress.status === 'starting' ? 'Preparing format...' : progress.status === 'downloading' ? 'Downloading...' : 'Converting to MP3...'}</span>
+              <span>{Math.round(progress.percent)}%</span>
+            </div>
+            <div className="w-full bg-red-200 rounded-full h-4 dark:bg-red-900/30 overflow-hidden shadow-inner">
+               <div 
+                 className="bg-red-500 h-4 rounded-full transition-all duration-300 ease-out" 
+                 style={{ width: `${progress.percent}%` }}
+               ></div>
+            </div>
+            {progress.status === 'downloading' && (
+              <div className="flex justify-between text-xs font-semibold text-red-700 dark:text-red-400">
+                <span>Speed: {progress.speed || 'Calculating...'}</span>
+                <span>Time left: {progress.eta || 'Calculating...'}</span>
+              </div>
+            )}
+            {progress.status === 'processing' && (
+               <div className="text-center text-xs font-semibold text-red-700 dark:text-red-400 mt-1">
+                 Finalizing file. This might take a moment...
+               </div>
+            )}
+          </div>
+        )}
 
         <button
           onClick={handleDownload}
