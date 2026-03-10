@@ -143,6 +143,7 @@ def download_youtube_audio(url, output_path):
         'format': 'bestaudio/best',
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
         'ffmpeg_location': ffmpeg_dir,
+        'noplaylist': True,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -279,6 +280,11 @@ def download_video_endpoint():
     try:
         data = request.json
         url = data.get("url")
+        
+        # Strip extraneous URL parameters like &list=... to prevent playlist downloads
+        if url and '&' in url:
+            url = url.split('&')[0]
+            
         path = data.get("path")
         print(f"Downloading to: {path}")
         downloaded_file = download_youtube_audio(url, output_path=path)
