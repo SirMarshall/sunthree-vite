@@ -50,11 +50,16 @@ function App() {
           setMessage(`Device not found. Will download to local folder.`);
           break;
         case 'drives-list':
-          setDrives(response.drives || []);
-          if ((response.drives || []).length > 0) {
-            setMessage(`Found ${response.drives.length} removable drive(s).`);
+          const currentDrives = response.drives || [];
+          setDrives(currentDrives);
+          if (currentDrives.length > 0) {
+            setMessage(`Found ${currentDrives.length} removable drive(s).`);
+            const firstDrive = currentDrives[0];
+            const musicPath = firstDrive.path.endsWith('/') || firstDrive.path.endsWith('\\') ? `${firstDrive.path}MUSIC/` : `${firstDrive.path}/MUSIC/`;
+            setDevicePath(musicPath);
           } else {
             setMessage('No external drives found. Using Downloads folder.');
+            setDevicePath('downloads');
           }
           break;
         case 'download-complete':
@@ -114,13 +119,29 @@ function App() {
         </div>
 
         <div className="space-y-4">
-          <input
-            className="w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-500/30 rounded-lg text-gray-900 dark:text-white placeholder-red-500/50 dark:placeholder-red-400/50 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-colors"
-            type="text"
-            value={url}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
-            placeholder="Enter YouTube URL here"
-          />
+          <div className="relative w-full">
+            <input
+              className="w-full px-4 py-3 pr-12 bg-red-50 dark:bg-red-900/20 border border-red-500/30 rounded-lg text-gray-900 dark:text-white placeholder-red-500/50 dark:placeholder-red-400/50 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-colors"
+              type="text"
+              value={url}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+              placeholder="Enter YouTube URL here"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  setUrl(text);
+                } catch (err) {
+                  console.error('Failed to read clipboard contents: ', err);
+                }
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"
+              title="Paste from clipboard"
+            >
+              📋
+            </button>
+          </div>
 
           <div className="flex gap-2">
             <select
